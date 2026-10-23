@@ -1,0 +1,83 @@
+# SDK rules for every call
+
+Use this file with [methods.md](methods.md) and the file of your language.
+This file gives the rules that apply to every call.
+Names here use the TypeScript form.
+Old Python names are the snake_case form, and old Go names are the PascalCase form.
+
+## Names and results
+
+- Each method takes one params object with `repo_name`, in place of a repository handle.
+- Each option takes its wire name, in snake_case.
+  [methods.md](methods.md) names each option that changes more, and [names.md](names.md) gives the deprecated wire names.
+- Results use wire names in every language: `next_cursor`, not `nextCursor`.
+- **Report:** each function of the project that returns an SDK result to its callers, because the shape of that result changes.
+- Dates are RFC 3339 strings, and each value has one field.
+  `rawDate`, `rawAuthorTime`, `rawCommitterTime`, `rawLastModified`, and `rawPushedAt` become `date`, `author_time`, `committer_time`, `last_modified`, and `pushed_at`.
+  **Report:** where the code used the parsed value (a `Date`, a `datetime`, a `time.Time`), parse the string at that use.
+- A diff entry's `state` is the Git status, the old `rawState`: `A`, `M`, `D`, `R`, `C`, or `T`.
+  The old `state` held a word such as `added`.
+  **Report:** compare the first letter where the code compared the word.
+  A rename or a copy can carry a score, such as `R100`.
+- An enum is open: a new value can arrive.
+  Give each branch on an enum a default case.
+
+## Request options
+
+| Old | New |
+| --- | --- |
+| `ttl` on a call | the request option for the TTL of the token that the SDK signs for that request, in seconds: 1 to 3600, default 300 |
+| `signal` on a call (TypeScript) | the request option `signal` |
+| `refPolicies` on a call | the request option for ref policies |
+
+The client option for ref policies sets the default of each call.
+A client with a fixed `token` rejects ref policies.
+
+## Errors
+
+| Old | New |
+| --- | --- |
+| `ApiError` | `APIError`, or its subclass for the status: `BadRequestError` 400, `AuthenticationError` 401, `PermissionDeniedError` 403, `NotFoundError` 404, `ConflictError` 409, `RateLimitError` 429, `InternalServerError` 5xx |
+| `RefUpdateError` | `RefUpdateError`, an `APIError` with `result` and `commit` |
+| a plain error with a message | the class and its `code` |
+
+- `APIError` has `status`, `code`, `title`, `detail`, `request_id`, `headers`, `body`, and `doc_url`.
+- Another status, such as 412, 416, or 422, gives a plain `APIError`.
+- The SDK picks `RefUpdateError` when the error body has `result`, at any status.
+- The old `reason` was the ref-update status.
+  Read `result.status` where the code read `reason`, for example `conflict` for a stale `expected_target_sha`.
+  `code` can be absent on a `RefUpdateError`, so do not use it in place of `reason`.
+  `result` is a `RefUpdateResult`, or a `NotesWriteResult` for a notes write; both have `status`, so read it with no cast or decode.
+- A `404` has the code `repository_not_found` when the repository does not exist, or when the path does not match the token's `repo` claim.
+  A missing object in the repository, such as a note, a ref, or a file, has the code `not_found`.
+  **Report:** a check of a message such as "note not found" becomes a check of `NotFoundError` whose `code` is not `repository_not_found`.
+- `MergeConflictError` is a `ConflictError` with `conflict_type`, `conflict_paths`, and `merge_base_sha`.
+- `APIConnectionError` means that no response came. `APITimeoutError` is its subclass for a timeout.
+- **Report:** replace each check of message text with a check of the class and `code`.
+
+## Retries and timeouts
+
+The old SDKs did not retry.
+The new SDK retries twice, with backoff, on a connection error, 408, 429, 5xx, and 409 with the code `repository_thawing` or `sync_in_progress`.
+It retries only `GET`, `HEAD`, `PUT`, and `DELETE` requests.
+Each attempt has a 60-second timeout.
+
+The SDK never retries these operations: `repos.create`, `repos.update`, `repos.archive.get`, `repos.grep`, `repos.merge`, `repos.branches.create`, `repos.commits.create`, `repos.commits.createFromDiff`, `repos.commits.restore`, `repos.notes.create`, `repos.notes.append`, `repos.tags.create`, `repos.gitCredentials.create`, and `repos.upstream.pull`.
+A retry loop around one of them stays as it is.
+
+A retried `DELETE` can get `404` when the first attempt worked and its response was lost.
+**Report** each delete whose `404` the code treats as a failure.
+
+**Ask** when the code wraps another SDK call in its own retry loop: "Keep your loop and turn off SDK retries for that call, or remove your loop?"
+Default: keep the loop, and set the call's max retries to 0.
+
+**Ask** when the code sends large commits or reads large archives: "Can these calls take more than 60 seconds? If so, which timeout do you want?"
+Default: keep 60 seconds.
+
+## Pagination
+
+A list call returns a page: `data` holds the items, with `has_more`, `next_cursor`, and `body`.
+The old result had a named array (`repos`, `branches`, `commits`, `tags`, `refs`, `entries`, `files`) and `nextCursor` and `hasMore`.
+The other fields of the body are in `page.body`, for example `paths` of `repos.files.list` and `commits` of `repos.files.metadata.list`.
+Replace a cursor loop with the iteration of your language.
+A call that read one page still reads one page.
