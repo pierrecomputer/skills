@@ -3,11 +3,11 @@ name: pierre-migrate
 description: Use when code calls the old Pierre Code Storage SDKs (`@pierre/storage`, `pierre-storage`, or the Go module `code-storage-go`) or deprecated Pierre HTTP routes and fields such as `/api/v1/repos/*`, and you move that code to `@pierre/sdk` or the current HTTP API.
 metadata:
   from-typescript: "@pierre/storage 1.17.1"
-  to-typescript: "@pierre/sdk 0.1.0-canary.1"
+  to-typescript: "@pierre/sdk 0.1.0-canary.2"
   from-python: "pierre-storage 1.17.1"
-  to-python: "pierre-sdk 0.1.0.dev1, not published"
+  to-python: "pierre-sdk 0.1.0.dev2, not published"
   from-go: "github.com/pierrecomputer/sdk/packages/code-storage-go v1.17.1"
-  to-go: "github.com/pierrecomputer/sdk/go v0.1.0-canary.1, not published"
+  to-go: "github.com/pierrecomputer/sdk/go v0.1.0-canary.2, not published"
 ---
 
 # Move to `@pierre/sdk` and the current HTTP API

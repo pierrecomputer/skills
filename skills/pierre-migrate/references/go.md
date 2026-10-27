@@ -11,8 +11,8 @@ They say what changes; this file shows how to write it.
 - The module is not published yet, so `go get` cannot download it.
   Until `go list` lists a version, do not move the Go code.
   Tell the user that the Go move waits for the first release of the Go SDK.
-- The module needs Go 1.25 or later.
-  **Ask** when the project's `go` directive or toolchain is older: "Update to Go 1.25?"
+- The `go` directive in the `go.mod` of the module gives the oldest Go version that it needs.
+  **Ask** when the project's `go` directive or toolchain is older: "Update Go to the version that the module needs?"
   Default: stop, and report that the move needs the update.
 - After the import path changes, `go build ./... && go vet ./...` lists each remaining use.
   Run `go mod tidy` when no use of the old module remains.
