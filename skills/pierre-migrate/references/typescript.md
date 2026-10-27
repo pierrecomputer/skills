@@ -117,16 +117,20 @@ Import the error classes from `@pierre/sdk`, and `WebhookVerificationError` also
 | `ApiError.statusText` | `title` |
 | `ApiError.body` | `body`; read `code` and `detail` |
 | `ApiError.method`, `ApiError.url` | none |
-| `RefUpdateError.reason` | `result.status`; `code` can be absent |
+| `RefUpdateError.reason` | for a stale guard, `RefGuardError` with `guard` and `current_sha`; else `result.status`, and `code` can be absent |
 | `RefUpdateError.refUpdate` | `result` |
 
 `result` has the type `RefUpdateResult | NotesWriteResult`.
 Read `result.status` with no cast:
 
 ```ts
-import { NotFoundError, RefUpdateError } from '@pierre/sdk'
+import { NotFoundError, RefGuardError, RefUpdateError } from '@pierre/sdk'
 
 export function isStaleHead(err: unknown): boolean {
+  return err instanceof RefGuardError && err.guard === 'expected_target_sha'
+}
+
+export function isPatchConflict(err: unknown): boolean {
   return err instanceof RefUpdateError && err.result.status === 'conflict'
 }
 
@@ -252,6 +256,7 @@ const pierre = {
   The old `new ApiError({ message, status, statusText, method, url, body })` becomes `new APIError(status, body)` or its subclass.
 - A failed ref update is a `RefUpdateError` with `result` in the body, at the status that the server sends for that result: `new RefUpdateError(409, { result: { status: 'conflict' } })`, or `new RefUpdateError(412, { result: { status: 'precondition_failed' } })`.
   The old `new RefUpdateError(message, { status })` becomes this form.
+- A failed SHA guard is a `RefGuardError`: `new RefGuardError(409, { code: 'ref_guard_failed', guard: 'expected_target_sha', current_sha })`.
 - The message of an SDK error is `<status> <code>: <detail>`.
   Compare the class and `code` in place of a message.
   When the code shows the message, change the text that the test expects.

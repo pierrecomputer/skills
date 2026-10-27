@@ -168,6 +168,8 @@ The example keeps the `nil` result of `FindOne` for a missing repository.
 - `*pierre.RefUpdateError` embeds `*pierre.APIError` directly.
   So `errors.As` for `*pierre.ConflictError` does not match it.
   Check `*pierre.RefUpdateError` first.
+- `*pierre.RefGuardError` is a failed SHA guard, with the code `ref_guard_failed`, `Guard`, and `CurrentSHA`.
+  It unwraps to a `*pierre.ConflictError`, so check it before `*pierre.ConflictError`.
 - `*pierre.APIError` has `Status`, `Code`, `Title`, `Detail`, `RequestID`, `Headers`, `Body`, and `DocURL`.
   The old `Message`, `StatusText`, `Method`, and `URL` have no equal; use `Title` and `Detail`.
 - The old `RefUpdateError.Reason` is the `Status` of the ref update, not `Code`.
@@ -176,8 +178,14 @@ The example keeps the `nil` result of `FindOne` for a missing repository.
   `Body` holds the response as it arrived.
 
 ```go
-// isStaleHead reports a commit whose expected head is not the branch head.
+// isStaleHead reports a commit whose expected target SHA is not the branch head.
 func isStaleHead(err error) bool {
+	var guardErr *pierre.RefGuardError
+	return errors.As(err, &guardErr) && guardErr.Guard == "expected_target_sha"
+}
+
+// isPatchConflict reports a diff that does not apply.
+func isPatchConflict(err error) bool {
 	var refErr *pierre.RefUpdateError
 	return errors.As(err, &refErr) && refErr.Result.Status == "conflict"
 }
