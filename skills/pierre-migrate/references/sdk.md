@@ -38,20 +38,27 @@ A client with a fixed `token` rejects ref policies.
 | Old | New |
 | --- | --- |
 | `ApiError` | `APIError`, or its subclass for the status: `BadRequestError` 400, `AuthenticationError` 401, `PermissionDeniedError` 403, `NotFoundError` 404, `ConflictError` 409, `RateLimitError` 429, `InternalServerError` 5xx |
-| `RefUpdateError` | `RefUpdateError`, an `APIError` with `result` and `commit` |
+| `RefUpdateError` | `RefGuardError` for a failed SHA guard, a `ConflictError` with `guard` and `current_sha`; `RefUpdateError` for another failed ref update, an `APIError` with `result` and `commit` |
 | a plain error with a message | the class and its `code` |
 
 - `APIError` has `status`, `code`, `title`, `detail`, `request_id`, `headers`, `body`, and `doc_url`.
 - Another status, such as 412, 416, or 422, gives a plain `APIError`.
-- The SDK picks `RefUpdateError` when the error body has `result`, at any status.
+- The SDK picks `RefGuardError` when the code is `ref_guard_failed`, also when the body has `result`.
+  Otherwise it picks `RefUpdateError` when the body has `result`, at any status.
 - The old `reason` was the ref-update status.
-  Read `result.status` where the code read `reason`, for example `conflict` for a stale `expected_target_sha`.
+  A stale guard, such as `expected_target_sha` (the old `expectedHeadSha`), now raises `RefGuardError`.
+  Where the code read `reason` `conflict` after a guarded write, check `RefGuardError`.
+  `guard` names the request field of the guard, and `current_sha` is the current commit of the ref; send it as the guard of the next attempt.
+  For another failed ref update, read `result.status` where the code read `reason`, for example `conflict` for a patch that does not apply.
   `code` can be absent on a `RefUpdateError`, so do not use it in place of `reason`.
   `result` is a `RefUpdateResult`, or a `NotesWriteResult` for a notes write; both have `status`, so read it with no cast or decode.
 - A `404` has the code `repository_not_found` when the repository does not exist, or when the path does not match the token's `repo` claim.
   A missing object in the repository, such as a note, a ref, or a file, has the code `not_found`.
   **Report:** a check of a message such as "note not found" becomes a check of `NotFoundError` whose `code` is not `repository_not_found`.
 - `MergeConflictError` is a `ConflictError` with `conflict_type`, `conflict_paths`, and `merge_base_sha`.
+- On the HTTP API, a failed SHA guard is a 409 with the code `ref_guard_failed`, `guard`, and `current_sha`.
+  A merge guard failure had the code `conflict` before; old code that compares the code with `conflict` after a merge guard needs the new code.
+  A commit write, a restore, or a notes write keeps its `result`, and `result.old_sha` gives the current commit.
 - `APIConnectionError` means that no response came. `APITimeoutError` is its subclass for a timeout.
 - **Report:** replace each check of message text with a check of the class and `code`.
 

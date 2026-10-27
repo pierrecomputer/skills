@@ -165,7 +165,7 @@ The example keeps the `None` result of `find_one` for a missing repository.
 | --- | --- |
 | `ApiError.status_code` | `APIError.status` |
 | `ApiError.response` | `APIError.body`, `headers`, `request_id` |
-| `RefUpdateError.reason` | `result["status"]`; `code` can be absent |
+| `RefUpdateError.reason` | for a stale guard, `RefGuardError` with `guard` and `current_sha`; else `result["status"]`, and `code` can be absent |
 | `RefUpdateError.ref_update` | `result` |
 | `httpx.HTTPStatusError` from a read | the `APIError` subclass for the status |
 | `ValueError` and other plain errors with a message | the class and its `code` |
@@ -174,10 +174,14 @@ The example keeps the `None` result of `find_one` for a missing repository.
 Read `result["status"]` with no cast:
 
 ```python
-from pierre import NotFoundError, RefUpdateError
+from pierre import NotFoundError, RefGuardError, RefUpdateError
 
 
 def is_stale_head(err: Exception) -> bool:
+    return isinstance(err, RefGuardError) and err.guard == "expected_target_sha"
+
+
+def is_patch_conflict(err: Exception) -> bool:
     return isinstance(err, RefUpdateError) and err.result["status"] == "conflict"
 
 
