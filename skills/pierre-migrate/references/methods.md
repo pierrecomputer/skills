@@ -268,6 +268,10 @@ In each line, `rawAuthorTime` and `rawCommitterTime` become `author_time` and `c
 | `listFilesWithMetadata` | `repos.files.metadata.list` | the result is a page of `files`; `commits` and `ref` are in `page.body` |
 
 - `repos.files.get` and `repos.archive.get` return the stream type of the language.
+- With no `limit` and no `cursor`, `repos.files.list` and `repos.files.metadata.list` return the full listing in one page, and `has_more` is false.
+  The old calls did the same, so a call with no `limit` needs no loop.
+  With a `limit` or a `cursor`, each call returns one page: `repos.files.list` returns up to 1000 entries by default and 5000 at most, and `repos.files.metadata.list` returns up to 200 files by default and 1000 at most.
+  The `limit` description names only this page default.
 - A `304` is a result.
   A `412` or a `416` raises `APIError`; the old SDKs returned the response.
   **Report:** a check of these statuses becomes a catch of `APIError`.

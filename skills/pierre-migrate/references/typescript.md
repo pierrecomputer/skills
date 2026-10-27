@@ -36,15 +36,26 @@ Pass `value || undefined` where the old code passed a value that can be empty.
 | `GitStorage`, `CodeStorage` | `Pierre` |
 | `Repo` | `string`, the repository name, or a local `Repo` type (below) |
 | `CommitSignature` | `GitIdentity` |
-| the builder's files | `CommitFile[]` |
+| `CommitBuilder` | none: `files` takes a `CommitFile[]` or an iterable of `CommitFile` ([methods.md](methods.md)) |
+| `CommitFileSource` | `FileContent`: a `Content` value, or a function that returns one ([Commits](#commits)) |
 | `CommitResult` | `CommitWriteResponse` |
 | `RefUpdate` | `RefUpdateResult` |
 | `CommitInfo` | `Commit` |
+| `BranchInfo` | `BranchListItem`; `Branch` has the same fields without `cursor` |
+| `TagInfo` | `TagListItem`; `Tag` has the same fields without `cursor` |
+| `ListFilesResult` | `Page<FileEntry, ReposFilesListResponse>` |
+| `TreeEntry` | `FileEntry` |
+| `ListFilesWithMetadataResult` | `Page<FileWithMetadata, ReposFilesMetadataListResponse>` |
+| `CommitMetadata` | `FileLastCommit` |
 | `GetBranchDiffResult`, `GetCommitDiffResult` | `ReposDiffGetResponse` |
 | `FileDiff` | `FileDiff`, with `state` as a Git status letter |
 | `WebhookPushEvent` | `GitPushEvent` |
 | `WebhookValidationResult` | none: `verifyWebhook` returns `KnownWebhookEvent \| UnknownWebhookEvent` from `@pierre/sdk/webhooks` |
 | `ApiError` | `APIError` |
+
+A list method returns a `PagePromise<Item, Body>`, and `await` gives a `Page<Item, Body>`.
+`Item` is the type of each item in `data`, and `Body` is the `Repos…ListResponse` type of the method.
+So each other old `List…Result` type also becomes a `Page`, for example `Page<BranchListItem, ReposBranchesListResponse>` for `ListBranchesResult`.
 
 Import the types from `@pierre/sdk` with `import type`.
 
@@ -157,6 +168,10 @@ await pierre.repos.commits.create({
 
 - `content` can be a string, a `Uint8Array`, an `ArrayBuffer`, a `Blob`, a `ReadableStream<Uint8Array>`, an iterable or async iterable of `Uint8Array`, or a function that returns one of them.
 - For text in another encoding than UTF-8, pass `Buffer.from(text, encoding)`.
+- The old `CommitFileSource` also took a stream or an iterable of `string`, `ArrayBuffer`, or other `ArrayBufferView` chunks.
+  Each chunk must now be a `Uint8Array`.
+  Convert a `string` chunk with `new TextEncoder().encode(chunk)`, and an `ArrayBuffer` chunk with `new Uint8Array(chunk)`.
+  In JavaScript without type checks, search for these sources, because the SDK does not check the type of a chunk.
 
 ## Local functions
 
@@ -177,6 +192,69 @@ const event = await verifyWebhook({ payload: rawBody, headers: req.headers, secr
 
 `repos.files.get` and `repos.archive.get` return a Fetch `Response`.
 Read it with `await res.text()`, `await res.arrayBuffer()`, or `res.body`.
+
+## Test mocks
+
+A test that mocks the old client or a `Repo` changes with the code.
+
+```ts
+import {
+  NotFoundError,
+  Page,
+  RefUpdateError,
+  type FileEntry,
+  type Pierre,
+  type ReposCommitsCreateParams,
+  type ReposFilesListResponse,
+} from '@pierre/sdk'
+
+function onePage<Item, Body>(data: Item[], body: Body): Page<Item, Body> {
+  const fields = { data, has_more: false, next_cursor: undefined, body, response: new Response() }
+  return new Page(fields, () => Promise.reject(new Error('no next page')))
+}
+
+const entries: FileEntry[] = [{ path: 'README.md', mode: '100644', type: 'blob' }]
+const listing: ReposFilesListResponse = { entries, paths: ['README.md'], ref: 'main', has_more: false }
+const written: string[] = []
+
+const pierre = {
+  repos: {
+    get: async () => {
+      throw new NotFoundError(404, { code: 'repository_not_found' })
+    },
+    files: {
+      list: () => onePage(entries, listing),
+    },
+    commits: {
+      create: async (params: ReposCommitsCreateParams) => {
+        for await (const file of params.files) written.push(file.path)
+        throw new RefUpdateError(409, { result: { status: 'conflict' } })
+      },
+    },
+  },
+} as unknown as Pierre
+```
+
+- The client nests its namespaces, for example `pierre.repos.files.metadata.list`.
+  Give the mock the same path to each method that the code calls, and cast it with `as unknown as Pierre`.
+- A method returns an `APIPromise`.
+  When the code only awaits the result, an `async` function can be the mock.
+  Add `withResponse()` or `asResponse()` only when the code calls it.
+- A list method returns a `PagePromise`.
+  Return a `Page` from the mock, not a promise of a `Page`, so that `await`, `for await`, and `page.body` all work.
+  The second argument of `Page` gets the next page from a cursor.
+  The SDK calls it only when `has_more` is true and `next_cursor` is set.
+- A mock of the old commit builder becomes a mock of `repos.commits.create`.
+  Read `params.files` with `for await`, because it can be an async iterable.
+  When a `content` is a function, call it to get the content.
+- Make each error from the status and the body of the response, with the class that the SDK picks ([sdk.md](sdk.md)):
+  `new NotFoundError(404, { code: 'not_found' })`, or `new APIError(412, { code: 'precondition_failed' })` for a status with no subclass.
+  The old `new ApiError({ message, status, statusText, method, url, body })` becomes `new APIError(status, body)` or its subclass.
+- A failed ref update is a `RefUpdateError` with `result` in the body, at the status that the server sends for that result: `new RefUpdateError(409, { result: { status: 'conflict' } })`, or `new RefUpdateError(412, { result: { status: 'precondition_failed' } })`.
+  The old `new RefUpdateError(message, { status })` becomes this form.
+- The message of an SDK error is `<status> <code>: <detail>`.
+  Compare the class and `code` in place of a message.
+  When the code shows the message, change the text that the test expects.
 
 ## Find the remaining uses
 
