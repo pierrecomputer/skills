@@ -1,20 +1,12 @@
 ---
 name: pierre-migrate
 description: Use when code calls the old Pierre Code Storage SDKs (`@pierre/storage`, `pierre-storage`, or the Go module `code-storage-go`) or deprecated Pierre HTTP routes and fields such as `/api/v1/repos/*`, and you move that code to `@pierre/sdk` or the current HTTP API.
-metadata:
-  from-typescript: "@pierre/storage 1.17.1"
-  to-typescript: "@pierre/sdk 0.1.0-canary.1"
-  from-python: "pierre-storage 1.17.1"
-  to-python: "pierre-sdk 0.1.0.dev1, not published"
-  from-go: "github.com/pierrecomputer/sdk/packages/code-storage-go v1.17.1"
-  to-go: "github.com/pierrecomputer/sdk/go v0.1.0-canary.1, not published"
 ---
 
 # Move to `@pierre/sdk` and the current HTTP API
 
 This skill covers one move: from the old Code Storage SDKs and the deprecated HTTP routes and fields to `@pierre/sdk` and the current routes.
 For the fields and behavior of a current operation, use the `pierre` skill or the docs index, `https://code.storage/docs/llms.txt`.
-The `metadata` of this file names the old and new SDK versions that the facts and examples match.
 
 ## 1. Find what the project uses
 

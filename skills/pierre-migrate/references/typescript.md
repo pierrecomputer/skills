@@ -8,12 +8,12 @@ They say what changes; this file shows how to write it.
 - Install `@pierre/sdk` from the `canary` tag, for example `npm install @pierre/sdk@canary`.
   Until the first release, the `latest` tag holds the placeholder `0.0.0`, so do not install the package with no tag or version.
   `npm view @pierre/sdk dist-tags` lists the tags and their versions.
-- Write the exact version in `package.json`, such as `0.1.0-canary.1`, with no `^`.
+- Write the exact version that npm installed in `package.json`, with no `^`.
   A canary can change with no notice.
-- `@pierre/sdk` is an ES module, and it needs Node 22.12 or later.
+- `@pierre/sdk` is an ES module. `engines.node` in its `package.json` gives the Node versions that it supports.
   On those versions, CommonJS code can `require` it.
 - Find the project's Node version in `engines.node` of `package.json`, `.nvmrc`, `.node-version`, `.tool-versions`, the CI configuration, or a `Dockerfile`.
-  **Ask** when a file names an older Node: "Update Node to 22.12 or later?"
+  **Ask** when a file names a Node version outside the `engines.node` range of `@pierre/sdk`: "Update Node to a version that `@pierre/sdk` supports?"
   Default: stop, and report that the move needs the update.
   When no file names a version, continue, and report the requirement.
 - Import the local functions from their subpaths: `remoteUrl` from `@pierre/sdk/git`, `createToken` from `@pierre/sdk/auth`, and `verifyWebhook` from `@pierre/sdk/webhooks`.

@@ -6,7 +6,7 @@ They say what changes; this file shows how to write it.
 ## Package
 
 - The distribution is `pierre-sdk`, and the import is `pierre`.
-  It supports Python 3.10 and later.
+  `requires-python` in its metadata gives the Python versions that it supports.
 - The distribution is not published yet.
   Do not install a package named `pierre-sdk`, and do not move the Python code.
   Tell the user that the Python move waits for the first release of the Python SDK.
