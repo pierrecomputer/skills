@@ -33,6 +33,11 @@ A project can use more than one of these.
 Code that sends HTTP requests to current routes can still send deprecated fields.
 Compare its parameters and fields with [names.md](references/names.md).
 
+For an SDK move, read the version of the old SDK that the project installs.
+The file of your language says where to find it.
+The references describe the old versions that `metadata` names.
+When the project installs an older version, use [sdk.md](references/sdk.md), "Older versions of the old SDK".
+
 List each call site by file and line, with its old call and its new call.
 Step 2 says when to show this list to the user.
 

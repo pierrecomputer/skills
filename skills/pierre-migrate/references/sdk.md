@@ -52,6 +52,12 @@ A client with a fixed `token` rejects ref policies.
   For another failed ref update, read `result.status` where the code read `reason`, for example `conflict` for a patch that does not apply.
   `code` can be absent on a `RefUpdateError`, so do not use it in place of `reason`.
   `result` is a `RefUpdateResult`, or a `NotesWriteResult` for a notes write; both have `status`, so read it with no cast or decode.
+- The old `RefUpdateError` also had `status`: a string label, such as `conflict`, from which the old SDK took `reason`.
+  Change a check of the old `status` in the same way as a check of `reason` (above).
+- The new `RefUpdateError` and `RefGuardError` are `APIError`s, and their `status` is the HTTP status, such as `409`.
+  The old `RefUpdateError` was not an `ApiError`.
+  **Report:** each check of the class `APIError` or of a number `status` that a failed ref update can reach, for example `status === 409` around a commit.
+  The old check never matched a failed ref update, so the code that it guards, such as a retry, starts to run.
 - A `404` has the code `repository_not_found` when the repository does not exist, or when the path does not match the token's `repo` claim.
   A missing object in the repository, such as a note, a ref, or a file, has the code `not_found`.
   **Report:** a check of a message such as "note not found" becomes a check of `NotFoundError` whose `code` is not `repository_not_found`.
@@ -88,3 +94,57 @@ The old result had a named array (`repos`, `branches`, `commits`, `tags`, `refs`
 The other fields of the body are in `page.body`, for example `paths` of `repos.files.list` and `commits` of `repos.files.metadata.list`.
 Replace a cursor loop with the iteration of your language.
 A call that read one page still reads one page.
+
+A loop can treat an error of the first page apart from an error of a later page, for example a `404` on the first page that means an empty list.
+Then make the list call inside the old error handling: the call gives the first page.
+After the handling, iterate over that page.
+The iteration gives the items of that page and of each next page, and an error of a later page comes from the iteration.
+The file of your language shows it.
+
+## Older versions of the old SDK
+
+The references describe the old versions that the `metadata` of `SKILL.md` names.
+An older version can lack an option, a method, or a result field.
+It can also ignore an option that the code passes, for example through a type cast or an untyped object.
+So when the project installs an older version, compare each call of the project with the source of the installed version, and list each difference.
+The installed package holds that source.
+
+A library that other projects install can declare a version range, such as `^1.9.0`.
+Its users get the newest version that the range allows, not the version in the library's lockfile.
+For a library, also compare each call with that newest version.
+
+**Ask** when the installed version did not send an option that the code passes: "Version <version> did not send `<option>`, so the call ignored it. Send it now, or leave it out?"
+Default: send it, because the code asks for it.
+When the newest version that a library's range allows sends the option, the library's users already get that behavior.
+Then send it with no question, and report it.
+
+**Report** each other difference that reaches a call of the project, with the installed version.
+
+## Your own type for the client
+
+A project can describe the old client, or a `Repo`, with its own type, so that a test can give a fake in place of the client: a TypeScript object type, a Python `Protocol`, or a Go interface.
+The type and each fake change with the code.
+
+- Give the type the shape of the new client: the path of each method that the code calls, such as `repos.commits.create`, the params with wire names, and the result fields that the code reads.
+  A chain of old calls becomes one call, for example `repo().createCommit().send()` becomes `repos.commits.create` with `files`.
+- Keep the name of the type, and only the methods that the code calls.
+- Use the params and result types of the new SDK where the type holds a whole params object or result.
+- The real client must still fit the type.
+  The type checker shows it where the code passes the real client.
+- Change each fake to the new type.
+  The file of your language shows a fake, in "Test mocks".
+
+## A library's public API
+
+A library that other projects install can name old SDK types in its public API: a re-export, such as `GitStorage` or `CommitSignature`, the params or the result of an exported function, an exported option type, or an exported type for the client.
+The move changes that API for each user of the library.
+
+- Change each old type to its new type in the table of your language file.
+  A `Repo` follows the `repo` **Ask** in [methods.md](methods.md).
+- Keep the names of the exported functions, options, and fields.
+- Change each example of the old client in the library's README and docs.
+- **Ask** when the library re-exports an old SDK name: "Export the new names, such as `Pierre` and `GitIdentity`, or keep each old name as an alias of its new type?"
+  Default: the new names.
+  An old name on a type with a new shape hides the change from your users.
+- **Report:** each export whose type changes.
+  A release with this change breaks the code of the library's users.
