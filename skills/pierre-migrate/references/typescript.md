@@ -5,11 +5,7 @@ They say what changes; this file shows how to write it.
 
 ## Package
 
-- Install `@pierre/sdk` from the `canary` tag, for example `npm install @pierre/sdk@canary`.
-  Until the first release, the `latest` tag holds the placeholder `0.0.0`, so do not install the package with no tag or version.
-  `npm view @pierre/sdk dist-tags` lists the tags and their versions.
-- Write the exact version that npm installed in `package.json`, with no `^`.
-  A canary can change with no notice.
+- Install `@pierre/sdk`, for example `npm install @pierre/sdk`.
 - `@pierre/sdk` is an ES module. `engines.node` in its `package.json` gives the Node versions that it supports.
   On those versions, CommonJS code can `require` it.
 - Find the project's Node version in `engines.node` of `package.json`, `.nvmrc`, `.node-version`, `.tool-versions`, the CI configuration, or a `Dockerfile`.
