@@ -7,9 +7,7 @@ They say what changes; this file shows how to write it.
 
 - The distribution is `pierre-sdk`, and the import is `pierre`.
   `requires-python` in its metadata gives the Python versions that it supports.
-- The distribution is not published yet.
-  Do not install a package named `pierre-sdk`, and do not move the Python code.
-  Tell the user that the Python move waits for the first release of the Python SDK.
+- Install `pierre-sdk` from PyPI, for example `uv add pierre-sdk` or `pip install pierre-sdk`.
 - Import the local functions from their modules: `from pierre.git import remote_url`, `from pierre.auth import create_token`, and `from pierre.webhooks import verify_webhook`.
   `import pierre` does not load these modules.
   A variable named `pierre` also hides the module, so use the `from` form.
@@ -78,7 +76,7 @@ async with AsyncPierre() as pierre:  # reads the PIERRE_* variables
 | `GetBranchDiffResult`, `GetCommitDiffResult` | `ReposDiffGetResponse` |
 | `FileDiff` | `FileDiff`, with `state` as a Git status letter |
 | `DiffFileState` | `str` |
-| `WebhookPushEvent` | `PushWebhookEvent` |
+| `WebhookPushEvent` | `GitPushEvent` |
 | `WebhookValidationResult` | none: `verify_webhook` returns the event or raises |
 | `ApiError` | `APIError` |
 

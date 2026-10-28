@@ -10,9 +10,7 @@ They say what changes; this file shows how to write it.
 - The module is `github.com/pierrecomputer/sdk/go`, with the package `pierre`.
   The packages `option`, `git`, `auth`, and `webhooks` are under the same path.
   `go list -m -versions github.com/pierrecomputer/sdk/go` lists its versions.
-- The module is not published yet, so `go get` cannot download it.
-  Until `go list` lists a version, do not move the Go code.
-  Tell the user that the Go move waits for the first release of the Go SDK.
+- Add the module with `go get github.com/pierrecomputer/sdk/go`.
 - The `go` directive in the `go.mod` of the module gives the oldest Go version that it needs.
   **Ask** when the project's `go` directive or toolchain is older: "Update Go to the version that the module needs?"
   Default: stop, and report that the move needs the update.
