@@ -267,6 +267,10 @@ event, err := webhooks.VerifyWebhook(webhooks.VerifyWebhookParams{Payload: body,
 
 - `Kind` is `git.KindDefault`, `git.KindEphemeral`, or `git.KindImport`.
 - `RefPolicies` take `option.RefPolicy{Pattern, Ops}`.
+  `Ops` is a `[]string`, so a `storage.Ops` value becomes a `[]string` of the op strings, such as `"no-push"` for `storage.OpNoPush` ([sdk.md](sdk.md)).
+- `storage.WebhookValidationOptions{MaxAgeSeconds: n}` becomes `Tolerance: pierre.Value(time.Duration(n) * time.Second)` in `webhooks.VerifyWebhookParams`.
+  The old `MaxAgeSeconds: 0` was the default, 300 seconds, so leave `Tolerance` unset for it.
+  A negative `MaxAgeSeconds` turned off the check: follow the `maxAgeSeconds` **Ask** in [methods.md](methods.md).
 - `VerifyWebhook` returns a `webhooks.Event`.
   Use a type switch on `*pierre.GitPushEvent`, `*pierre.GitSyncStartedEvent`, `*pierre.GitSyncSucceededEvent`, `*pierre.GitSyncFailedEvent`, and `*webhooks.UnknownEvent`.
   A rejection is a `*pierre.WebhookVerificationError` with `Reason`.
