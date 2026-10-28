@@ -5,6 +5,8 @@ They say what changes; this file shows how to write it.
 
 ## Module
 
+- `go list -m github.com/pierrecomputer/sdk/packages/code-storage-go` gives the version of the old module that the project builds with.
+  `go list -m -f '{{.Dir}}' github.com/pierrecomputer/sdk/packages/code-storage-go` gives the folder of its source.
 - The module is `github.com/pierrecomputer/sdk/go`, with the package `pierre`.
   The packages `option`, `git`, `auth`, and `webhooks` are under the same path.
   `go list -m -versions github.com/pierrecomputer/sdk/go` lists its versions.
@@ -176,6 +178,10 @@ The example keeps the `nil` result of `FindOne` for a missing repository.
   `Code` can be empty.
   `Result` is a decoded `pierre.RefUpdateResult`, and `Commit` is a `*pierre.WrittenCommit` or `nil`.
   `Body` holds the response as it arrived.
+- The old `RefUpdateError.Status` was a `string`, the label of `Reason`; read `Result.Status` in its place.
+  The new `Status` is the `int` HTTP status of the embedded `*pierre.APIError`, so the compiler shows each old comparison with a string.
+- The old `*storage.RefUpdateError` did not unwrap to `*storage.APIError`.
+  Now `errors.As` for `*pierre.APIError` matches a `*pierre.RefUpdateError` and a `*pierre.RefGuardError` ([sdk.md](sdk.md), the **Report** on a number `status`).
 
 ```go
 // isStaleHead reports a commit whose expected target SHA is not the branch head.
@@ -207,6 +213,27 @@ for repo, err := range page.All(ctx) {
 ```
 
 `page.Data`, `page.NextCursor`, `page.HasNextPage()`, `page.GetNextPage(ctx)`, and `page.IterPages(ctx)` read one page at a time.
+
+The list call returns the error of the first page, and `page.All` yields the error of a later page.
+So a loop that treats an error of the first page apart from a later error keeps the two checks apart:
+
+```go
+page, err := client.Repos.Commits.List(ctx, pierre.ReposCommitsListParams{RepoName: name, Ref: pierre.String(branch)})
+var notFound *pierre.NotFoundError
+if errors.As(err, &notFound) {
+	return nil, nil
+}
+if err != nil {
+	return nil, err
+}
+var commits []pierre.Commit
+for commit, err := range page.All(ctx) { // the first page and each next page
+	if err != nil {
+		return nil, err
+	}
+	commits = append(commits, commit)
+}
+```
 
 ## Commits
 
@@ -277,3 +304,63 @@ func handleWebhook(w http.ResponseWriter, r *http.Request, secret string, onPush
   Read the status and the headers with `option.WithResponseInto`.
 - `Repos.Files.Metadata.Get` returns `*pierre.HeadersResult` with `Status` and `Headers`.
   Each header is a string, so parse `Headers.ContentLength` with `strconv.ParseInt`.
+
+## Test mocks
+
+A test that mocks the old client or a `Repo` changes with the code.
+The project can have its own interface for the client ([sdk.md](sdk.md), "Your own type for the client").
+An interface cannot hold the namespace fields of `*pierre.Client`, such as `Repos.Commits`.
+So give each namespace that the code calls its own interface, with the methods that the code calls in the signatures of the SDK.
+The namespace value, such as `client.Repos.Commits`, implements it.
+
+```go
+// commitsAPI is the part of client.Repos.Commits that the store calls.
+type commitsAPI interface {
+	Create(ctx context.Context, params pierre.ReposCommitsCreateParams, opts ...option.RequestOption) (*pierre.CommitWriteResponse, error)
+	List(ctx context.Context, params pierre.ReposCommitsListParams, opts ...option.RequestOption) (*pierre.Page[pierre.Commit, pierre.ReposCommitsListResponse], error)
+}
+
+// Store keeps records in a repository.
+type Store struct {
+	commits commitsAPI
+}
+
+// NewStore returns a store that calls the client.
+func NewStore(client *pierre.Client) *Store {
+	return &Store{commits: client.Repos.Commits}
+}
+```
+
+- Where the old interface held methods of several namespaces, the struct holds one interface for each namespace.
+- Keep the signature of each exported constructor.
+  A test sets the struct fields.
+- **Report:** each exported interface that changes, because each type that implements it changes.
+
+A fake:
+
+```go
+type fakeCommits struct {
+	written []string
+}
+
+func (f *fakeCommits) Create(ctx context.Context, params pierre.ReposCommitsCreateParams, opts ...option.RequestOption) (*pierre.CommitWriteResponse, error) {
+	for _, file := range params.Files {
+		f.written = append(f.written, file.Path)
+	}
+	return nil, &pierre.RefUpdateError{
+		APIError: &pierre.APIError{PierreError: &pierre.PierreError{Message: "409 conflict"}, Status: 409},
+		Result:   pierre.RefUpdateResult{Status: pierre.RefUpdateResultStatusConflict},
+	}
+}
+
+func (f *fakeCommits) List(ctx context.Context, params pierre.ReposCommitsListParams, opts ...option.RequestOption) (*pierre.Page[pierre.Commit, pierre.ReposCommitsListResponse], error) {
+	return &pierre.Page[pierre.Commit, pierre.ReposCommitsListResponse]{}, nil
+}
+```
+
+- A test builds the store with the fake in the field: `&Store{commits: &fakeCommits{}}`.
+- A mock of the old commit builder becomes a mock of `Create`.
+  Read `params.Files`, or `params.FileSeq` when the code passes a sequence.
+- Make each error as the SDK does: the type for the status, with `Status` and `Code` on the embedded `*pierre.APIError`, for example `&pierre.NotFoundError{APIError: &pierre.APIError{PierreError: &pierre.PierreError{Message: "404 not_found"}, Status: 404, Code: "not_found"}}`.
+  Set `PierreError`, because `Error()` reads its `Message`.
+- A `*pierre.Page` with `HasMore` false never gets a next page, so a fake can return a `Page` with only `Data` and `Body`.

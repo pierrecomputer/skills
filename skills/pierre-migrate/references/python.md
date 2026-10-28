@@ -13,6 +13,12 @@ They say what changes; this file shows how to write it.
 - Import the local functions from their modules: `from pierre.git import remote_url`, `from pierre.auth import create_token`, and `from pierre.webhooks import verify_webhook`.
   `import pierre` does not load these modules.
   A variable named `pierre` also hides the module, so use the `from` form.
+- Find the project's Python version in `requires-python` of `pyproject.toml`, `.python-version`, `.tool-versions`, the CI configuration, or a `Dockerfile`.
+  **Ask** when a file names a Python version outside the `requires-python` range of `pierre-sdk`, or when the project's `requires-python` allows one: "Update Python to a version that `pierre-sdk` supports?"
+  Default: stop, and report that the move needs the update.
+  When no file names a version, continue, and report the requirement.
+- Read the installed version of `pierre-storage` with `pip show pierre-storage` in the project's environment, or from the lockfile, such as `uv.lock`, `poetry.lock`, or a `requirements` file.
+  The source of that version is the `pierre_storage` folder that `pip show -f pierre-storage` lists.
 - The old package brought `pyjwt` and `pydantic`.
   The new one does not.
   **Report:** when the code imports `jwt` or `pydantic` and the project does not declare it, add it to the project's dependencies.
@@ -166,6 +172,7 @@ The example keeps the `None` result of `find_one` for a missing repository.
 | `ApiError.status_code` | `APIError.status` |
 | `ApiError.response` | `APIError.body`, `headers`, `request_id` |
 | `RefUpdateError.reason` | for a stale guard, `RefGuardError` with `guard` and `current_sha`; else `result["status"]`, and `code` can be absent |
+| `RefUpdateError.status`, a `str` | as `reason`; the new `status` is the HTTP status, an `int` ([sdk.md](sdk.md)) |
 | `RefUpdateError.ref_update` | `result` |
 | `httpx.HTTPStatusError` from a read | the `APIError` subclass for the status |
 | `ValueError` and other plain errors with a message | the class and its `code` |
@@ -201,6 +208,19 @@ page.next_cursor
 ```
 
 With `Pierre`, use `for` in place of `async for`.
+
+A loop that treats an error of the first page apart from a later error:
+
+```python
+first: Optional[AsyncPage[Commit, ReposCommitsListResponse]]
+try:
+    first = await pierre.repos.commits.list(repo_name=name, ref=branch)
+except NotFoundError:
+    first = None
+commits = [] if first is None else [commit async for commit in first]  # each page
+```
+
+`AsyncPage` is in `pierre`, and `Commit` and `ReposCommitsListResponse` are in `pierre.types`.
 
 ## Commits
 
@@ -242,6 +262,109 @@ The conditional and range headers are keyword arguments, such as `range=` and `i
 - Python 3.10 does not parse a final `Z` with `datetime.fromisoformat`.
   There, use `datetime.fromisoformat(value.replace("Z", "+00:00"))`.
 - `DiffFileState` and `GitFileMode` members become strings, for example `"A"` and `"100644"`.
+
+## Test mocks
+
+A test that mocks the old client or a `Repo` changes with the code.
+When the project has its own type for the client ([sdk.md](sdk.md), "Your own type for the client"), write it as a `Protocol` with the path of each method that the code calls:
+
+```python
+from typing import Awaitable, List, Protocol
+
+from pierre import AsyncPage
+from pierre.types import Commit, CommitFile, CommitWriteResponse, GitIdentity, ReposCommitsListResponse
+
+
+class StoreCommits(Protocol):
+    async def create(
+        self,
+        *,
+        repo_name: str,
+        author: GitIdentity,
+        commit_message: str,
+        target_branch: str,
+        files: List[CommitFile],
+    ) -> CommitWriteResponse: ...
+
+    def list(
+        self, *, repo_name: str, ref: str
+    ) -> Awaitable[AsyncPage[Commit, ReposCommitsListResponse]]: ...
+
+
+class StoreRepos(Protocol):
+    @property
+    def commits(self) -> StoreCommits: ...
+
+
+class StoreClient(Protocol):
+    @property
+    def repos(self) -> StoreRepos: ...
+```
+
+- Name only the arguments that the code passes.
+  The SDK method takes more keyword arguments, and `AsyncPierre` still fits the `Protocol`.
+- A list method of `AsyncPierre` returns an `AsyncPaginator`.
+  Type it as `Awaitable[AsyncPage[...]]` when the code awaits a page, or as `AsyncIterable[Item]` when the code uses `async for` on the call.
+- A namespace is a `@property` in the `Protocol`, so a fake can hold it in a plain attribute.
+
+A fake:
+
+```python
+import httpx
+
+from pierre import RefUpdateError
+
+
+async def no_next_page(cursor: str) -> AsyncPage[Commit, ReposCommitsListResponse]:
+    raise AssertionError("no next page")
+
+
+class FakeCommits:
+    def __init__(self) -> None:
+        self.written: List[str] = []
+
+    async def create(
+        self,
+        *,
+        repo_name: str,
+        author: GitIdentity,
+        commit_message: str,
+        target_branch: str,
+        files: List[CommitFile],
+    ) -> CommitWriteResponse:
+        self.written.extend(file["path"] for file in files)
+        raise RefUpdateError(409, {"result": {"status": "conflict"}})
+
+    async def list(
+        self, *, repo_name: str, ref: str
+    ) -> AsyncPage[Commit, ReposCommitsListResponse]:
+        body: ReposCommitsListResponse = {"commits": [], "has_more": False}
+        return AsyncPage(
+            data=body["commits"],
+            has_more=False,
+            next_cursor=None,
+            body=body,
+            response=httpx.Response(200),
+            fetch=no_next_page,
+        )
+
+
+class FakeRepos:
+    def __init__(self) -> None:
+        self.commits = FakeCommits()
+
+
+class FakeClient:
+    def __init__(self) -> None:
+        self.repos = FakeRepos()
+```
+
+- A mock of the old commit builder becomes a mock of `repos.commits.create`.
+  `files` can be an iterable or an async iterable, so read it as the code passes it.
+- Make each error from the status and the body of the response, with the class that the SDK picks ([sdk.md](sdk.md)): `NotFoundError(404, {"code": "not_found"})`, or `APIError(412, {"code": "precondition_failed"})` for a status with no subclass.
+  The old `RefUpdateError(message, status="conflict")` becomes `RefUpdateError(409, {"result": {"status": "conflict"}})`.
+- A failed SHA guard is a `RefGuardError`: `RefGuardError(409, {"code": "ref_guard_failed", "guard": "expected_target_sha", "current_sha": sha})`.
+- With `Pierre`, the methods are not `async`, and a list method returns a `Page` with the same arguments.
 
 ## Find the remaining uses
 

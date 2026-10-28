@@ -16,6 +16,9 @@ They say what changes; this file shows how to write it.
   **Ask** when a file names a Node version outside the `engines.node` range of `@pierre/sdk`: "Update Node to a version that `@pierre/sdk` supports?"
   Default: stop, and report that the move needs the update.
   When no file names a version, continue, and report the requirement.
+- Read the installed version of `@pierre/storage` from `node_modules/@pierre/storage/package.json`, or from the lockfile when `node_modules` is absent.
+  The source of that version is in the same folder.
+  `npm view @pierre/storage@'<range>' version` lists the versions that a range allows; the last one is the newest.
 - Import the local functions from their subpaths: `remoteUrl` from `@pierre/sdk/git`, `createToken` from `@pierre/sdk/auth`, and `verifyWebhook` from `@pierre/sdk/webhooks`.
   Import the client and the error classes from `@pierre/sdk`.
 
@@ -118,6 +121,7 @@ Import the error classes from `@pierre/sdk`, and `WebhookVerificationError` also
 | `ApiError.body` | `body`; read `code` and `detail` |
 | `ApiError.method`, `ApiError.url` | none |
 | `RefUpdateError.reason` | for a stale guard, `RefGuardError` with `guard` and `current_sha`; else `result.status`, and `code` can be absent |
+| `RefUpdateError.status`, a string | as `reason`; the new `status` is the HTTP status ([sdk.md](sdk.md)) |
 | `RefUpdateError.refUpdate` | `result` |
 
 `result` has the type `RefUpdateResult | NotesWriteResult`.
@@ -152,6 +156,19 @@ page.next_cursor
 ```
 
 `page.hasNextPage()`, `page.getNextPage()`, and `page.iterPages()` move one page at a time.
+
+A loop that treats an error of the first page apart from a later error:
+
+```ts
+const first = await pierre.repos.commits.list({ repo_name: name, ref: branch }).catch((err) => {
+  if (err instanceof NotFoundError) return null
+  throw err
+})
+const commits: Commit[] = []
+if (first !== null) {
+  for await (const commit of first) commits.push(commit) // the first page and each next page
+}
+```
 
 ## Commits
 
@@ -260,6 +277,47 @@ const pierre = {
 - The message of an SDK error is `<status> <code>: <detail>`.
   Compare the class and `code` in place of a message.
   When the code shows the message, change the text that the test expects.
+
+When the project has its own type for the client ([sdk.md](sdk.md), "Your own type for the client"), the fake fits that type with no cast:
+
+```ts
+import {
+  Page,
+  RefUpdateError,
+  type Commit,
+  type CommitWriteResponse,
+  type ReposCommitsCreateParams,
+  type ReposCommitsListParams,
+  type ReposCommitsListResponse,
+} from '@pierre/sdk'
+
+export interface StoreClient {
+  repos: {
+    commits: {
+      create(params: ReposCommitsCreateParams): Promise<CommitWriteResponse>
+      list(params: ReposCommitsListParams): Promise<Page<Commit, ReposCommitsListResponse>>
+    }
+  }
+}
+
+const fake: StoreClient = {
+  repos: {
+    commits: {
+      create: async () => {
+        throw new RefUpdateError(409, { result: { status: 'conflict' } })
+      },
+      list: async () => onePage<Commit, ReposCommitsListResponse>([], { commits: [], has_more: false }),
+    },
+  },
+}
+```
+
+- Type a method that gives one result as `Promise<Result>`.
+  The `APIPromise` of the real client is a `Promise`, and an `async` function in the fake returns one.
+- Type a list method as `Promise<Page<Item, Body>>` when the code awaits a page, or as `AsyncIterable<Item>` when the code uses `for await` on the call.
+  For `AsyncIterable<Item>`, the fake returns a `Page`.
+- Where the code passes a `Pierre` as a `StoreClient`, the type checker shows that the real client fits the type.
+- `onePage` is the helper of the first example.
 
 ## Find the remaining uses
 

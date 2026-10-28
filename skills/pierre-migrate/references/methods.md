@@ -33,6 +33,12 @@ const pierreFromEnv = new Pierre() // reads the PIERRE_* variables
 
 - The new client reads `PIERRE_ORG`, `PIERRE_PRIVATE_KEY` or `PIERRE_PRIVATE_KEY_FILE`, `PIERRE_TOKEN`, `PIERRE_API_BASE_URL`, and `PIERRE_GIT_HOST`.
   When the code passes these values explicitly, keep that form.
+- The old client read no environment variable.
+  The new client reads the variable of each option that the code does not give, also when the code gives other options.
+  For example, `new Pierre({ org, token })` reads `PIERRE_API_BASE_URL` and `PIERRE_GIT_HOST`.
+  A credential that is not set at run time, such as a `token` from a missing variable, falls back to the credential variables.
+  **Report:** each client that the code makes with options, and the variables that it reads for the options that the code does not give.
+  Run `rg -n 'PIERRE_'` to find where the project, its environment files, its CI configuration, or its deploy configuration set a variable that such a client reads.
 - A credential option replaces every credential variable.
   Give at most one of `privateKey`, `token`, and `getToken`.
 - With `token` and no `org`, the client reads the organization from the token's `iss` claim.
