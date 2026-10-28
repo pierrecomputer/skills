@@ -76,7 +76,7 @@ async with AsyncPierre() as pierre:  # reads the PIERRE_* variables
 | `GetBranchDiffResult`, `GetCommitDiffResult` | `ReposDiffGetResponse` |
 | `FileDiff` | `FileDiff`, with `state` as a Git status letter |
 | `DiffFileState` | `str` |
-| `WebhookPushEvent` | `PushWebhookEvent` |
+| `WebhookPushEvent` | `GitPushEvent` |
 | `WebhookValidationResult` | none: `verify_webhook` returns the event or raises |
 | `ApiError` | `APIError` |
 
