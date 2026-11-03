@@ -75,7 +75,9 @@ await pierre.repos.branches.create({ repo_name: created.repo_name, base_ref: 'ma
 - A copy, `baseRepo: { id, ref, sha }`, becomes `base_repo: { name: id, ref }`.
   Send `sha` as `ref`.
   The SDK signs the source token.
-- A sync, `baseRepo` with `provider`, becomes `upstream` and `default_branch` ([names.md](names.md)).
+- A sync, `baseRepo` with `owner` and `name`, becomes `upstream` and `default_branch` ([names.md](names.md)).
+  When the sync gives no `provider`, it is a GitHub sync: the old SDKs sent `provider: 'github'`.
+  `upstream.provider` is required, so send `provider: 'github'`.
 - The result is `{ repo_name, message }`, not a `Repo`.
   The old `repo.defaultBranch` was the value that the old SDK sent: the sync's `defaultBranch`, else the `defaultBranch` option, else `main`.
   Use the same value; it needs no request.
@@ -106,6 +108,12 @@ const found = await pierre.repos.get({ repo_name: name }).catch((err) => {
   The old `Repo` had `id` (the name), `defaultBranch`, and `createdAt`.
 - **Report:** a `null` check becomes a catch of `NotFoundError` that keeps the `null` branch.
 - Code that called methods on the returned `Repo` passes `repo_name` to each method.
+- Code can call `findOne` only to get a `Repo` for later calls, and read no field of it.
+  The new SDK needs no handle, so `repos.get` then only checks that the repository exists.
+  - When the code acts on `null`, for example it returns early or raises its own error, keep `repos.get` with the catch of `NotFoundError`, so that this branch does not change.
+  - Otherwise, remove the call, and pass `repo_name` to each later method.
+    A missing repository then raises `NotFoundError` at the first later call.
+    **Report:** each `findOne` that you remove.
 
 ### `repo` → none
 
@@ -389,8 +397,9 @@ try {
 - The event is a union on `type`: `push`, `repo.sync.started`, `repo.sync.succeeded`, `repo.sync.failed`, or `{ type: 'unknown', event_type, body }`.
   Its fields use wire names ([names.md](names.md) for `push`).
 - `maxAgeSeconds` becomes `tolerance_seconds`, default 300.
-  The old `0` turned off the timestamp check; the new `0` allows no age.
-  **Ask** when the code sets `maxAgeSeconds: 0`: "Keep a timestamp check (recommended, 300 seconds), or set a large tolerance?"
+  The old `0` or a negative value turned off the timestamp check; the new `0` allows no age.
+  In Go, the old `0` was the default, 300, and only a negative value turned off the check.
+  **Ask** when the code turns off the check: "Keep a timestamp check (recommended, 300 seconds), or set a large tolerance?"
   Default: 300.
 - `validateWebhookSignature` and `parseSignatureHeader` have no equal; `verifyWebhook` does both.
 - Python's `parse_push_event` has no equal; read the event that `verify_webhook` returns.

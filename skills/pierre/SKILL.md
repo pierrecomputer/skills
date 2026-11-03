@@ -19,7 +19,7 @@ The docs own routes, authentication, scopes, request fields, and examples.
 
 Docs MCP server: `https://code.storage/docs/mcp`.
 Docs index: `https://code.storage/docs/llms.txt`.
-Pages accept a `.md` suffix, for example `https://code.storage/docs/guides/webhooks.md`.
+Pages accept a `.md` suffix, for example `https://code.storage/docs/repos/webhooks.md`.
 Use Markdown pages instead of HTML pages or a full-site download.
 The docs MCP server supplies reference material; it does not run Pierre operations.
 

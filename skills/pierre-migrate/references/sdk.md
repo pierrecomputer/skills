@@ -33,6 +33,15 @@ Old Python names are the snake_case form, and old Go names are the PascalCase fo
 The client option for ref policies sets the default of each call.
 A client with a fixed `token` rejects ref policies.
 
+The new SDKs have no constants for the ops of a ref policy.
+Use the strings:
+
+| Old | New |
+| --- | --- |
+| `OP_NO_PUSH`; Go `storage.OpNoPush` | `'no-push'` |
+| `OP_NO_FORCE_PUSH`; Go `storage.OpNoForcePush` | `'no-force-push'` |
+| `OP_VERIFY_SIG`; Go `storage.OpVerifySig` | `'verify-sig'` |
+
 ## Errors
 
 | Old | New |
@@ -58,6 +67,14 @@ A client with a fixed `token` rejects ref policies.
   The old `RefUpdateError` was not an `ApiError`.
   **Report:** each check of the class `APIError` or of a number `status` that a failed ref update can reach, for example `status === 409` around a commit.
   The old check never matched a failed ref update, so the code that it guards, such as a retry, starts to run.
+- A commit write, `repos.commits.create` or `repos.commits.createFromDiff`, can get `409` with `result.status` `failed`: storage wrote the commit, but the branch did not take it, for example because the branch moved during the write.
+  The SDK raises `RefUpdateError`, not `RefGuardError`, and `RefUpdateError` is not a `ConflictError`.
+  `commit` is the commit that the branch did not get.
+  `code` and `current_sha` are absent, and `result.old_sha` is the commit that the write expected, not the current tip of the branch.
+  The old SDKs raised `RefUpdateError` with `reason` `failed` for this response, so a check of that `reason` becomes a check of `result.status` `failed`.
+  **Report:** each check of `RefGuardError` or `ConflictError` around a commit write that must catch a moved branch, because it does not catch this response.
+  **Report:** each check of `reason` `failed` after a commit write in TypeScript or Go.
+  Those SDKs also gave `failed` for an error response with no `result`, such as a `401` or a `5xx`, which now raises the class of its status.
 - A `404` has the code `repository_not_found` when the repository does not exist, or when the path does not match the token's `repo` claim.
   A missing object in the repository, such as a note, a ref, or a file, has the code `not_found`.
   **Report:** a check of a message such as "note not found" becomes a check of `NotFoundError` whose `code` is not `repository_not_found`.

@@ -58,6 +58,8 @@ Send it as `upstream`, and move the other fields:
 | `base_repo.default_branch` | top-level `default_branch` |
 
 A `base_repo` without `provider` is a one-time copy of a Code Storage repository: `{ name, ref, auth: { token } }`.
+This holds for the HTTP body.
+The old SDK option `baseRepo` with `owner` and `name` and no `provider` was a GitHub sync, because the old SDKs sent `provider: "github"` ([methods.md](methods.md)).
 
 The old SDKs sent a copy with `provider: "code"`, `owner`, and `operation: "fork"`.
 It is a copy, not a sync, so keep it in `base_repo`:
