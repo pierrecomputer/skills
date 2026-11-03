@@ -96,13 +96,10 @@ const repo = storage.repo({ id: name })
 await repo.createBranch({ baseRef: 'main', targetBranch: 'feat', ttl: 600 })
 
 // @pierre/sdk
-await pierre.repos.branches.create(
-  { repo_name: name, base_ref: 'main', target_branch: 'feat' },
-  { tokenTtl: 600 },
-)
+await pierre.repos.branches.create({ repo_name: name, base_ref: 'main', target_branch: 'feat' })
 ```
 
-- The second argument holds the request options: `signal`, `timeout` (milliseconds), `maxRetries`, `headers`, `tokenTtl` (seconds), and `refPolicies`.
+- The second argument holds the request options: `signal`, `timeout` (milliseconds), `maxRetries`, `headers`, and `refPolicies`.
 - `.withResponse()` gives `{ data, response, headers, request_id }`.
   Read a status, such as `201` or `200` from `repos.create`, from `response.status`.
 

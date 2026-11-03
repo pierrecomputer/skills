@@ -26,9 +26,13 @@ Old Python names are the snake_case form, and old Go names are the PascalCase fo
 
 | Old | New |
 | --- | --- |
-| `ttl` on a call | the request option for the TTL of the token that the SDK signs for that request, in seconds: 1 to 3600, default 300 |
+| `ttl` on a call | none |
 | `signal` on a call (TypeScript) | the request option `signal` |
 | `refPolicies` on a call | the request option for ref policies |
+
+**Report:** remove the `ttl` of each call, with no replacement.
+The new SDK signs a new token for each request, and a call cannot set the lifetime of that token.
+The `ttl` of a remote URL and of `createToken` stays ([methods.md](methods.md)).
 
 The client option for ref policies sets the default of each call.
 A client with a fixed `token` rejects ref policies.

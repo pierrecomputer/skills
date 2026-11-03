@@ -5,7 +5,7 @@ The examples use TypeScript, with `store` for the old client and `pierre` for th
 The language file shows how to write these calls in Python and Go.
 
 - An option or a result field that a section does not name keeps its name in snake_case: `targetBranch` becomes `target_branch`.
-- Each old `ttl` option becomes the request option for the token TTL ([sdk.md](sdk.md)).
+- Remove each old `ttl` option that a section does not map ([sdk.md](sdk.md)).
 - There is no repository handle: each repository method takes `repo_name`.
 
 ## Client

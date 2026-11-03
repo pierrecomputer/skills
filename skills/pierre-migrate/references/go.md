@@ -122,7 +122,7 @@ _, err = client.Repos.Branches.Create(ctx, pierre.ReposBranchesCreateParams{
 	RepoName:     created.RepoName,
 	BaseRef:      pierre.String("main"),
 	TargetBranch: pierre.String("feat"),
-}, option.WithTokenTTL(10*time.Minute))
+})
 ```
 
 - Each old method is the PascalCase form of its name in [methods.md](methods.md), except `FileStream`, `ArchiveStream`, `RemoteURL`, `EphemeralRemoteURL`, `ImportRemoteURL`, and `Config`.
@@ -148,7 +148,7 @@ _, err = client.Repos.Branches.Create(ctx, pierre.ReposBranchesCreateParams{
   ```
 - The params have no deprecated top-level fields.
   Use the current names in [names.md](names.md).
-- The per-call options are `option.WithTokenTTL` (whole seconds, 1 second to 1 hour), `option.WithTimeout`, `option.WithMaxRetries`, `option.WithHeader`, `option.WithRefPolicies`, and `option.WithResponseInto`.
+- The per-call options are `option.WithTimeout`, `option.WithMaxRetries`, `option.WithHeader`, `option.WithRefPolicies`, and `option.WithResponseInto`.
 - To read a status, such as `201` or `200` from `Repos.Create`, pass `option.WithResponseInto(&res)` with `var res *http.Response`.
 
 ## Errors

@@ -125,7 +125,7 @@ same = store.repo(id=name)  # a handle, no request
 # pierre-sdk
 created = await pierre.repos.create(repo_name=name, default_branch="main")
 await pierre.repos.branches.create(
-    repo_name=created["repo_name"], base_ref="main", target_branch="feat", token_ttl=600
+    repo_name=created["repo_name"], base_ref="main", target_branch="feat"
 )
 ```
 
@@ -133,7 +133,7 @@ Each old method is the snake_case form of its name in [methods.md](methods.md), 
 The new method is the catalog path with snake_case segments, for example `pierre.repos.git_credentials.create`.
 
 - Every argument is a keyword argument.
-- The per-call options are `timeout` (seconds), `max_retries`, `extra_headers`, `token_ttl` (seconds), and `ref_policies`.
+- The per-call options are `timeout` (seconds), `max_retries`, `extra_headers`, and `ref_policies`.
   No operation accepts `idempotency_key` today, so do not pass it.
 - `None` changed meaning.
   The old SDK did not send an argument that was `None`.
