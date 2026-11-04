@@ -10,9 +10,7 @@ They say what changes; this file shows how to write it.
 - The module is `github.com/pierrecomputer/sdk/go`, with the package `pierre`.
   The packages `option`, `git`, `auth`, and `webhooks` are under the same path.
   `go list -m -versions github.com/pierrecomputer/sdk/go` lists its versions.
-- The module is not published yet, so `go get` cannot download it.
-  Until `go list` lists a version, do not move the Go code.
-  Tell the user that the Go move waits for the first release of the Go SDK.
+- Add the module with `go get github.com/pierrecomputer/sdk/go`.
 - The `go` directive in the `go.mod` of the module gives the oldest Go version that it needs.
   **Ask** when the project's `go` directive or toolchain is older: "Update Go to the version that the module needs?"
   Default: stop, and report that the move needs the update.
@@ -124,7 +122,7 @@ _, err = client.Repos.Branches.Create(ctx, pierre.ReposBranchesCreateParams{
 	RepoName:     created.RepoName,
 	BaseRef:      pierre.String("main"),
 	TargetBranch: pierre.String("feat"),
-}, option.WithTokenTTL(10*time.Minute))
+})
 ```
 
 - Each old method is the PascalCase form of its name in [methods.md](methods.md), except `FileStream`, `ArchiveStream`, `RemoteURL`, `EphemeralRemoteURL`, `ImportRemoteURL`, and `Config`.
@@ -150,7 +148,7 @@ _, err = client.Repos.Branches.Create(ctx, pierre.ReposBranchesCreateParams{
   ```
 - The params have no deprecated top-level fields.
   Use the current names in [names.md](names.md).
-- The per-call options are `option.WithTokenTTL` (whole seconds, 1 second to 1 hour), `option.WithTimeout`, `option.WithMaxRetries`, `option.WithHeader`, `option.WithRefPolicies`, and `option.WithResponseInto`.
+- The per-call options are `option.WithTimeout`, `option.WithMaxRetries`, `option.WithHeader`, `option.WithRefPolicies`, and `option.WithResponseInto`.
 - To read a status, such as `201` or `200` from `Repos.Create`, pass `option.WithResponseInto(&res)` with `var res *http.Response`.
 
 ## Errors

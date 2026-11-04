@@ -7,9 +7,7 @@ They say what changes; this file shows how to write it.
 
 - The distribution is `pierre-sdk`, and the import is `pierre`.
   `requires-python` in its metadata gives the Python versions that it supports.
-- The distribution is not published yet.
-  Do not install a package named `pierre-sdk`, and do not move the Python code.
-  Tell the user that the Python move waits for the first release of the Python SDK.
+- Install `pierre-sdk` from PyPI, for example `uv add pierre-sdk` or `pip install pierre-sdk`.
 - Import the local functions from their modules: `from pierre.git import remote_url`, `from pierre.auth import create_token`, and `from pierre.webhooks import verify_webhook`.
   `import pierre` does not load these modules.
   A variable named `pierre` also hides the module, so use the `from` form.
@@ -78,7 +76,7 @@ async with AsyncPierre() as pierre:  # reads the PIERRE_* variables
 | `GetBranchDiffResult`, `GetCommitDiffResult` | `ReposDiffGetResponse` |
 | `FileDiff` | `FileDiff`, with `state` as a Git status letter |
 | `DiffFileState` | `str` |
-| `WebhookPushEvent` | `PushWebhookEvent` |
+| `WebhookPushEvent` | `GitPushEvent` |
 | `WebhookValidationResult` | none: `verify_webhook` returns the event or raises |
 | `ApiError` | `APIError` |
 
@@ -127,7 +125,7 @@ same = store.repo(id=name)  # a handle, no request
 # pierre-sdk
 created = await pierre.repos.create(repo_name=name, default_branch="main")
 await pierre.repos.branches.create(
-    repo_name=created["repo_name"], base_ref="main", target_branch="feat", token_ttl=600
+    repo_name=created["repo_name"], base_ref="main", target_branch="feat"
 )
 ```
 
@@ -135,7 +133,7 @@ Each old method is the snake_case form of its name in [methods.md](methods.md), 
 The new method is the catalog path with snake_case segments, for example `pierre.repos.git_credentials.create`.
 
 - Every argument is a keyword argument.
-- The per-call options are `timeout` (seconds), `max_retries`, `extra_headers`, `token_ttl` (seconds), and `ref_policies`.
+- The per-call options are `timeout` (seconds), `max_retries`, `extra_headers`, and `ref_policies`.
   No operation accepts `idempotency_key` today, so do not pass it.
 - `None` changed meaning.
   The old SDK did not send an argument that was `None`.
